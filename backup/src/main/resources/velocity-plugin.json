@@ -1,0 +1,7 @@
+{
+  "id": "sevoqueue",
+  "name": "SevoQueue",
+  "version": "1.0.0",
+  "authors": ["mgmmehrad"],
+  "main": "org.mgmmehrad.sevoqueue.Main"
+}

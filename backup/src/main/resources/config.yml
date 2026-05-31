@@ -1,0 +1,42 @@
+# SevoQueue Config.yml
+
+Enabled: true
+default-server: "lobby"
+queue-sec: 5
+
+Queue-Message: "&aYou are in position &e{pos} &aYour remaining time is &e{time} &aseconds"
+ActionBar-Message: "&eQueue: &a{server} &7| &ePosition: &a{pos} &7| &eTime: &a{time}s"
+
+slash-server: true
+velocity-server-command: true
+licence: false
+Licence-Code: "TypeYourLicenceHere"
+
+Permissions:
+  bypass:
+    permission: "sevoqueue.bypass"
+    enabled: true
+  join:
+    permission: "sevoqueue.join"
+    enabled: true
+  leave:
+    permission: "sevoqueue.leave"
+    enabled: true
+  status:
+    permission: "sevoqueue.status"
+    enabled: true
+  reload:
+    permission: "sevoqueue.reload"
+    enabled: true
+  send:
+    permission: "sevoqueue.send"
+    enabled: true
+  server:
+    permission: "sevoqueue.server"
+    enabled: true
+  slashserver:
+    permission: "sevoqueue.slashserver"
+    enabled: true
+  tabcomplete:
+    permission: "sevoqueue.tabcomplete"
+    enabled: true

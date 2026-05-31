@@ -1,0 +1,5 @@
+name: SevoQueue
+version: 1.0.0
+author: mgmmehrad
+main: org.mgmmehrad.sevoqueue.bungee.Main
+description: Queue system for BungeeCord/Waterfall
