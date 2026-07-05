@@ -24,6 +24,8 @@ public class ConfigManager {
     private int queueSec;
     private String queueMessage;
     private String actionBarMessage;
+    private String serverCantConnectMessage;
+    private String serverCantConnectActionBar;
     private boolean slashServer;
     private boolean licence;
     private String licenceCode;
@@ -82,6 +84,11 @@ public class ConfigManager {
             queueSec = Math.max(0, config.node("queue-sec").getInt(5));
             queueMessage = config.node("Queue-Message").getString("&aYou are in position &e{pos} &aYour remaining time is &e{time} &aseconds");
             actionBarMessage = config.node("ActionBar-Message").getString("&eQueue: &a{server} &7| &ePosition: &a{pos} &7| &eTime: &a{time}s");
+
+            // New Config Options
+            serverCantConnectMessage = config.node("Server-Cant-Connect-Message").getString("&cServer Is {Reason}&7. &aYou are in position &e{pos}");
+            serverCantConnectActionBar = config.node("Server-Cant-Connect-ActionBar").getString("&cServer Is {Reason}&7. &aYou are in position &e{pos}");
+
             slashServer = config.node("slash-server").getBoolean(true);
             licence = config.node("licence").getBoolean(false);
             licenceCode = config.node("Licence-Code").getString("");
@@ -118,15 +125,12 @@ public class ConfigManager {
             logger.info("✓ License validated! Running SevoQueuePlus with full features.");
         } else if (licence) {
             licenseValid = false;
-            pluginDisplayName = "SevoQueue";
+            pluginDisplayName = "SevoQueue-Licence";
             logger.warn("✗ Invalid license code! Please check your Licence-Code in config.yml");
-            logger.warn("  Valid licenses are:");
-            logger.warn("    - Qwfgwknfnifldm@fgteWdf3#d)");
-            logger.warn("    - &24jf3jfneifBjaHFBEINJJNBY3#5%*(");
         } else {
             licenseValid = false;
-            pluginDisplayName = "SevoQueue";
-            logger.info("License feature is disabled. Running standard SevoQueue.");
+            pluginDisplayName = "SevoQueue-Licence";
+            logger.info("License not found.");
         }
     }
 
@@ -151,7 +155,6 @@ public class ConfigManager {
         return licenseValid;
     }
 
-    // این دو متد برای رفع خطا اضافه شدن
     public boolean isLicenseEnabled() {
         return licence;
     }
@@ -213,6 +216,11 @@ public class ConfigManager {
     public int getQueueSec() { return queueSec; }
     public String getQueueMessage() { return queueMessage; }
     public String getActionBarMessage() { return actionBarMessage; }
+
+    // New Getters
+    public String getServerCantConnectMessage() { return serverCantConnectMessage; }
+    public String getServerCantConnectActionBar() { return serverCantConnectActionBar; }
+
     public boolean isSlashServer() { return slashServer; }
     public boolean hasLicence() { return licence; }
     public String getLicenceCode() { return licenceCode; }
@@ -235,7 +243,6 @@ public class ConfigManager {
         return isPermissionEnabled(key) && source.hasPermission(getPermission(key));
     }
 
-    // Reload config with license check
     public void reloadConfig() {
         loadConfig();
     }

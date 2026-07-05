@@ -75,7 +75,7 @@ public class QueueCommand extends Command {
     }
 
     private void sendHelp(ProxiedPlayer player) {
-        player.sendMessage(new TextComponent(ChatColor.GOLD + "===== SevoQueue Help ====="));
+        player.sendMessage(new TextComponent(ChatColor.GOLD + "===== Queue Help ====="));
         player.sendMessage(new TextComponent(ChatColor.YELLOW + "/queue join <server> " + ChatColor.GRAY + "- Join queue for a server"));
         player.sendMessage(new TextComponent(ChatColor.YELLOW + "/queue leave " + ChatColor.GRAY + "- Leave current queue"));
         player.sendMessage(new TextComponent(ChatColor.YELLOW + "/queue status " + ChatColor.GRAY + "- Check your queue status"));

@@ -8,6 +8,7 @@ import net.md_5.bungee.config.YamlConfiguration;
 import net.md_5.bungee.api.plugin.Plugin;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.*;
@@ -37,94 +38,82 @@ public class ConfigManager {
     }
 
     private static Map<String, String> createDefaultPermissionNodes() {
-        Map<String, String> permissions = new LinkedHashMap<>();
-        permissions.put("bypass", "sevoqueue.bypass");
-        permissions.put("join", "sevoqueue.join");
-        permissions.put("leave", "sevoqueue.leave");
-        permissions.put("status", "sevoqueue.status");
-        permissions.put("reload", "sevoqueue.reload");
-        permissions.put("send", "sevoqueue.send");
-        permissions.put("server", "sevoqueue.server");
-        permissions.put("slashserver", "sevoqueue.slashserver");
-        permissions.put("tabcomplete", "sevoqueue.tabcomplete");
-        return Collections.unmodifiableMap(permissions);
+        Map<String, String> nodes = new HashMap<>();
+        nodes.put("join", "sevoqueue.join");
+        nodes.put("leave", "sevoqueue.leave");
+        nodes.put("status", "sevoqueue.status");
+        nodes.put("reload", "sevoqueue.reload");
+        nodes.put("tabcomplete", "sevoqueue.tabcomplete");
+        nodes.put("send", "sevoqueue.send");
+        nodes.put("server", "sevoqueue.server");
+        nodes.put("slashserver", "sevoqueue.slashserver");
+        return nodes;
     }
 
     public void loadConfig() {
-        try {
-            File configFile = new File(plugin.getDataFolder(), "config.yml");
+        if (!plugin.getDataFolder().exists()) {
+            plugin.getDataFolder().mkdirs();
+        }
 
-            if (!plugin.getDataFolder().exists()) {
-                plugin.getDataFolder().mkdirs();
-            }
+        File file = new File(plugin.getDataFolder(), "config.yml");
 
-            if (!configFile.exists()) {
-                try (InputStream in = plugin.getResourceAsStream("config.yml")) {
-                    if (in != null) {
-                        Files.copy(in, configFile.toPath());
-                    }
+        if (!file.exists()) {
+            try (InputStream in = plugin.getResourceAsStream("config.yml")) {
+                if (in != null) {
+                    Files.copy(in, file.toPath());
+                } else {
+                    file.createNewFile();
                 }
+            } catch (IOException e) {
+                plugin.getLogger().severe("Could not create config.yml: " + e.getMessage());
             }
-
-            config = ConfigurationProvider.getProvider(YamlConfiguration.class).load(configFile);
-
-            enabled = config.getBoolean("Enabled", true);
-            queueSec = Math.max(0, config.getInt("queue-sec", 5));
-            queueMessage = config.getString("Queue-Message", "&aYou are in position &e{pos} &aYour remaining time is &e{time} &aseconds");
-            actionBarMessage = config.getString("ActionBar-Message", "&eQueue: &a{server} &7| &ePosition: &a{pos} &7| &eTime: &a{time}s");
-            slashServer = config.getBoolean("slash-server", true);
-            licence = config.getBoolean("licence", false);
-            licenceCode = config.getString("Licence-Code", "");
-            velocityServerCommand = config.getBoolean("velocity-server-command", true);
-            defaultServer = config.getString("default-server", "lobby");
-            loadPermissions();
-
-            checkLicenseAndUpdateName();
-
-            plugin.getLogger().info("Config loaded successfully!");
-
-        } catch (Exception e) {
-            plugin.getLogger().severe("Failed to load config!");
-            e.printStackTrace();
         }
-    }
 
-    private boolean checkLicense(String licenseKey) {
-        if (licenseKey == null) return false;
-        String validLicense1 = "Qwfgwknfnifldm@fgteWdf3#d)";
-        String validLicense2 = "&24jf3jfneifBjaHFBEINJJNBY3#5%*(";
-        return licenseKey.equals(validLicense1) || licenseKey.equals(validLicense2);
-    }
+        try {
+            config = ConfigurationProvider.getProvider(YamlConfiguration.class).load(file);
+        } catch (IOException e) {
+            plugin.getLogger().severe("Could not load config.yml: " + e.getMessage());
+            return;
+        }
 
-    private void checkLicenseAndUpdateName() {
-        if (licence && checkLicense(licenceCode)) {
-            licenseValid = true;
-            pluginDisplayName = "SevoQueuePlus";
-            plugin.getLogger().info("✓ License validated! Running SevoQueuePlus with full features.");
-        } else if (licence) {
-            licenseValid = false;
-            pluginDisplayName = "SevoQueue";
-            plugin.getLogger().warning("✗ Invalid license code! Please check your Licence-Code in config.yml");
+        // هماهنگ‌سازی دقیق با حروف بزرگ و کوچک داخل config.yml شما
+        enabled = config.getBoolean("Enabled", config.getBoolean("enabled", true));
+
+        // اصلاح خواندن دقیق بخش queue-sec بدون حساسیت شدید به حروف بزرگ و کوچک
+        if (config.contains("queue-sec")) {
+            queueSec = config.getInt("queue-sec", 5);
+        } else if (config.contains("Queue-Sec")) {
+            queueSec = config.getInt("Queue-Sec", 5);
         } else {
-            licenseValid = false;
-            pluginDisplayName = "SevoQueue";
-            plugin.getLogger().info("License feature is disabled. Running standard SevoQueue.");
+            queueSec = 5;
         }
-    }
 
-    private void loadPermissions() {
-        permissionNodes.clear();
-        permissionEnabled.clear();
+        queueMessage = config.getString("Queue-Message", config.getString("queue-message", "&aYou are in position &e{pos} &aYour remaining time is &e{time} &aseconds"));
+        actionBarMessage = config.getString("ActionBar-Message", config.getString("actionbar-message", "&eQueue: &a{server} &7| &ePosition: &a{pos} &7| &eTime: &a{time}s"));
+        slashServer = config.getBoolean("slash-server", true);
+        licence = config.getBoolean("licence", false);
+        licenceCode = config.getString("Licence-Code", config.getString("licence-code", ""));
+        velocityServerCommand = config.getBoolean("velocity-server-command", true);
+        defaultServer = config.getString("default-server", "lobby");
 
-        for (Map.Entry<String, String> entry : DEFAULT_PERMISSION_NODES.entrySet()) {
-            String key = entry.getKey();
-            String defaultPermission = entry.getValue();
+        // بارگذاری پرمیشن‌ها بر اساس ساختار کانفیگ شما
+        Configuration permissionsSection = config.getSection("Permissions");
+        if (permissionsSection == null) {
+            permissionsSection = config.getSection("permissions");
+        }
 
-            String permission = config.getString("Permissions." + key + ".permission", defaultPermission);
-            boolean enabled = config.getBoolean("Permissions." + key + ".enabled", true);
-
-            permissionNodes.put(key, permission);
-            permissionEnabled.put(key, enabled);
+        if (permissionsSection != null) {
+            for (String key : permissionsSection.getKeys()) {
+                String node = permissionsSection.getString(key + ".permission");
+                if (node == null) {
+                    node = permissionsSection.getString(key + ".node");
+                }
+                boolean isEnabled = permissionsSection.getBoolean(key + ".enabled", true);
+                if (node != null) {
+                    permissionNodes.put(key.toLowerCase(), node);
+                }
+                permissionEnabled.put(key.toLowerCase(), isEnabled);
+            }
         }
     }
 
@@ -143,11 +132,11 @@ public class ConfigManager {
     public String getDefaultServer() { return defaultServer; }
 
     public String getPermission(String key) {
-        return permissionNodes.getOrDefault(key, DEFAULT_PERMISSION_NODES.getOrDefault(key, "sevoqueue." + key));
+        return permissionNodes.getOrDefault(key.toLowerCase(), DEFAULT_PERMISSION_NODES.getOrDefault(key.toLowerCase(), "sevoqueue." + key.toLowerCase()));
     }
 
     public boolean isPermissionEnabled(String key) {
-        return permissionEnabled.getOrDefault(key, true);
+        return permissionEnabled.getOrDefault(key.toLowerCase(), true);
     }
 
     public boolean hasPermission(CommandSender sender, String key) {
@@ -168,5 +157,14 @@ public class ConfigManager {
 
     public String getPluginDisplayName() {
         return pluginDisplayName;
+    }
+
+    public void setLicenseValid(boolean valid) {
+        this.licenseValid = valid;
+        if (valid) {
+            this.pluginDisplayName = "SevoQueuePlus";
+        } else {
+            this.pluginDisplayName = "SevoQueue";
+        }
     }
 }

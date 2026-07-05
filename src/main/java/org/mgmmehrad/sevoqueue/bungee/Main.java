@@ -69,6 +69,7 @@ public class Main extends Plugin {
 
         getLogger().info("=========================================");
         getLogger().info(pluginDisplayName + " v1.0.0 Enabled!");
+        getLogger().info("Running on: BungeeCord");
         getLogger().info("Queue time: " + configManager.getQueueSec() + " seconds");
         getLogger().info("Slash Server: " + (configManager.isSlashServer() ? "Enabled" : "Disabled"));
         getLogger().info("=========================================");

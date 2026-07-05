@@ -31,13 +31,14 @@ public class PlayerJoinListener {
         Player player = event.getPlayer();
         String defaultServer = configManager.getDefaultServer();
 
-        logger.info("Player {} is joining for the first time", player.getUsername());
+        // لاگ جوین اولیه غیرفعال شد
+        // logger.info("Player {} is joining for the first time", player.getUsername());
 
         server.getServer(defaultServer).ifPresentOrElse(
                 s -> {
                     event.setInitialServer(s);
                     sendMessage(player, "&aWelcome! You have been connected to &e" + defaultServer);
-                    logger.info("Sent {} to default server: {}", player.getUsername(), defaultServer);
+                    // logger.info("Sent {} to default server: {}", player.getUsername(), defaultServer);
                 },
                 () -> {
                     logger.warn("Default server {} not found!", defaultServer);
@@ -52,13 +53,13 @@ public class PlayerJoinListener {
         String targetServer = event.getOriginalServer().getServerInfo().getName();
 
         if (queueManager.isConnectingViaQueue(player)) {
-            logger.info("Allowing queue-initiated connection for {} to {}", player.getUsername(), targetServer);
+            // logger.info("Allowing queue-initiated connection for {} to {}", player.getUsername(), targetServer);
             queueManager.setConnectingViaQueue(player, false);
             return;
         }
 
         if (queueManager.isInQueue(player)) {
-            logger.info("Player {} is in queue, blocking connection to {}", player.getUsername(), targetServer);
+            // logger.info("Player {} is in queue, blocking connection to {}", player.getUsername(), targetServer);
             event.setResult(ServerPreConnectEvent.ServerResult.denied());
             sendMessage(player, "&cYou are in queue! Use &e/queue leave &cto cancel.");
             return;
@@ -67,7 +68,7 @@ public class PlayerJoinListener {
         if (!queueManager.getAddons().canConnectToServer(targetServer)) {
             String statusMsg = queueManager.getAddons().getServerStatusMessage(targetServer);
             if (statusMsg != null) {
-                logger.info("Server {} is not available for {}", targetServer, player.getUsername());
+                // logger.info("Server {} is not available for {}", targetServer, player.getUsername());
                 event.setResult(ServerPreConnectEvent.ServerResult.denied());
                 sendMessage(player, statusMsg);
                 return;
@@ -76,29 +77,28 @@ public class PlayerJoinListener {
 
         if (queueManager.canBypassQueue(player)) {
             queueManager.removeFromQueue(player, false);
-            logger.info("Allowing bypass connection for {} to {}", player.getUsername(), targetServer);
+            // logger.info("Allowing bypass connection for {} to {}", player.getUsername(), targetServer);
             return;
         }
 
         if (player.getCurrentServer().isEmpty()) {
-            logger.info("Allowing initial connection for {} to {}", player.getUsername(), targetServer);
+            // logger.info("Allowing initial connection for {} to {}", player.getUsername(), targetServer);
             return;
         }
 
         if (configManager.isVelocityServerCommand()) {
-            logger.info("Blocking direct /server command for {} to {}", player.getUsername(), targetServer);
+            // logger.info("Blocking direct /server command for {} to {}", player.getUsername(), targetServer);
             event.setResult(ServerPreConnectEvent.ServerResult.denied());
             queueManager.addToQueue(player, targetServer);
         } else {
-            logger.info("Allowing direct connection for {} to {}", player.getUsername(), targetServer);
+            // logger.info("Allowing direct connection for {} to {}", player.getUsername(), targetServer);
         }
     }
-
-    // متد onKickedFromServer حذف شد - Velocity خودش مدیریت میکنه
 
     @Subscribe
     public void onDisconnect(DisconnectEvent event) {
         Player player = event.getPlayer();
+        // خروج بازیکن از صف در هنگام قطع کامل ارتباط از نتورک (نوعی دیسکانکت)
         queueManager.removeFromQueue(player, false);
         queueManager.setConnectingViaQueue(player, false);
     }

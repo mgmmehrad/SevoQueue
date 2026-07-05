@@ -51,17 +51,10 @@ public class QueueManager {
         }
         serverName = targetServerName;
 
-        if (!addons.canConnectToServer(serverName)) {
-            String statusMsg = addons.getServerStatusMessage(serverName);
-            if (statusMsg != null) {
-                sendMessage(player, statusMsg);
-            } else {
-                sendMessage(player, "&cError: Server is not available right now.");
-            }
-            return;
-        }
+        Addons.ServerStatus status = addons.getCurrentStatusPublic(serverName);
+        boolean serverConnectable = status == Addons.ServerStatus.ONLINE;
 
-        if (canBypassQueue(player)) {
+        if (canBypassQueue(player) && serverConnectable) {
             if (playerQueueMap.containsKey(playerId)) {
                 removeFromQueue(player, false);
             }
@@ -70,7 +63,6 @@ public class QueueManager {
             connectingViaQueue.put(playerId, true);
             player.createConnectionRequest(targetServer.get()).connect()
                     .whenComplete((result, throwable) -> connectingViaQueue.remove(playerId));
-            logger.info("{} bypassed the queue for {}", player.getUsername(), serverName);
             return;
         }
 
@@ -91,21 +83,28 @@ public class QueueManager {
         queue.add(playerId);
         playerQueueMap.put(playerId, serverName);
 
-        if (wasEmpty) {
+        if (!serverConnectable) {
+            nextQueueReadyTime.remove(serverName);
+        } else if (wasEmpty) {
             nextQueueReadyTime.put(serverName, System.currentTimeMillis() + getQueueDelayMillis());
         }
 
         int position = queue.size();
-        long waitTime = getEstimatedWaitSeconds(playerId, serverName);
 
-        String message = configManager.getQueueMessage()
-                .replace("{pos}", String.valueOf(position))
-                .replace("{time}", String.valueOf(waitTime));
-
-        sendMessage(player, message);
-
-        logger.info("{} added to queue for {} (Position: {}, Wait: {}s)",
-                player.getUsername(), serverName, position, waitTime);
+        // چک کردن برای ارسال پیام صحیح بر اساس وضعیت
+        if (serverConnectable) {
+            long waitTime = getEstimatedWaitSeconds(playerId, serverName);
+            String message = configManager.getQueueMessage()
+                    .replace("{pos}", String.valueOf(position))
+                    .replace("{time}", String.valueOf(waitTime));
+            sendMessage(player, message);
+        } else {
+            String reason = getReasonString(status);
+            String message = configManager.getServerCantConnectMessage()
+                    .replace("{pos}", String.valueOf(position))
+                    .replace("{Reason}", reason);
+            sendMessage(player, message);
+        }
     }
 
     public void removeFromQueue(Player player) {
@@ -177,6 +176,17 @@ public class QueueManager {
         return message == null ? "" : message.replace((char) 167, '&');
     }
 
+    // تبدیل وضعیت به یک متن کوتاه و مرتب برای Reason
+    private String getReasonString(Addons.ServerStatus status) {
+        switch (status) {
+            case FULL: return "Full";
+            case OFFLINE: return "Offline";
+            case STARTING: return "Starting";
+            case RESTARTING: return "Restarting";
+            default: return "Unavailable";
+        }
+    }
+
     private void startActionBarUpdater() {
         server.getScheduler().buildTask(pluginInstance, () -> {
             for (Map.Entry<UUID, String> entry : playerQueueMap.entrySet()) {
@@ -190,14 +200,24 @@ public class QueueManager {
                 int position = getPositionInQueue(playerId, serverName);
                 if (position == -1) continue;
 
-                long remainingTime = getEstimatedWaitSeconds(playerId, serverName);
+                Addons.ServerStatus status = addons.getCurrentStatusPublic(serverName);
 
-                String actionBarMsg = configManager.getActionBarMessage()
-                        .replace("{pos}", String.valueOf(position))
-                        .replace("{time}", String.valueOf(remainingTime))
-                        .replace("{server}", serverName);
-
-                sendActionBar(player, actionBarMsg);
+                // اگر سرور آنلاین بود، زمان رو نشون بده. در غیر این صورت وضعیت (دلیل) رو بنویس
+                if (status == Addons.ServerStatus.ONLINE) {
+                    long remainingTime = getEstimatedWaitSeconds(playerId, serverName);
+                    String actionBarMsg = configManager.getActionBarMessage()
+                            .replace("{pos}", String.valueOf(position))
+                            .replace("{time}", String.valueOf(remainingTime))
+                            .replace("{server}", serverName);
+                    sendActionBar(player, actionBarMsg);
+                } else {
+                    String reason = getReasonString(status);
+                    String actionBarMsg = configManager.getServerCantConnectActionBar()
+                            .replace("{pos}", String.valueOf(position))
+                            .replace("{Reason}", reason)
+                            .replace("{server}", serverName);
+                    sendActionBar(player, actionBarMsg);
+                }
             }
         }).repeat(500, TimeUnit.MILLISECONDS).schedule();
     }
@@ -231,6 +251,11 @@ public class QueueManager {
         if (zeroBasedPosition == -1) return 0;
 
         long now = System.currentTimeMillis();
+
+        if (addons.getCurrentStatusPublic(serverName) != Addons.ServerStatus.ONLINE) {
+            return 0L;
+        }
+
         long nextReadyTime = nextQueueReadyTime.getOrDefault(serverName, now);
         long timeUntilHeadCanConnect = Math.max(0L, nextReadyTime - now);
         long estimatedMillis = timeUntilHeadCanConnect + (zeroBasedPosition * getQueueDelayMillis());
@@ -256,9 +281,13 @@ public class QueueManager {
                 Optional<RegisteredServer> targetServer = server.getServer(serverName);
                 if (targetServer.isEmpty()) continue;
 
-                // Check server status before connecting
                 if (!addons.canConnectToServer(serverName)) {
+                    nextQueueReadyTime.remove(serverName);
                     continue;
+                }
+
+                if (!nextQueueReadyTime.containsKey(serverName)) {
+                    nextQueueReadyTime.put(serverName, System.currentTimeMillis() + getQueueDelayMillis());
                 }
 
                 UUID nextPlayerId = queue.peek();
@@ -292,8 +321,7 @@ public class QueueManager {
                     nextPlayer.createConnectionRequest(targetServer.get()).connect()
                             .whenComplete((result, throwable) -> connectingViaQueue.remove(nextPlayerId));
 
-                    logger.info("{} is now connecting to {}",
-                            nextPlayer.getUsername(), serverName);
+                    logger.info("{} is now connecting to {}", nextPlayer.getUsername(), serverName);
                 }
             }
         }).repeat(500, TimeUnit.MILLISECONDS).schedule();

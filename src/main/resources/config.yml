@@ -6,6 +6,8 @@ queue-sec: 5
 
 Queue-Message: "&aYou are in position &e{pos} &aYour remaining time is &e{time} &aseconds"
 ActionBar-Message: "&eQueue: &a{server} &7| &ePosition: &a{pos} &7| &eTime: &a{time}s"
+Server-Cant-Connect-Message: "&cServer Is {Reason}&7. &aYou are in position &e{pos}"
+Server-Cant-Connect-ActionBar: "&cServer Is {Reason}&7. &aYou are in position &e{pos}"
 
 slash-server: true
 velocity-server-command: true

@@ -38,10 +38,6 @@ public class QueueCommand implements SimpleCommand {
 
         switch (args[0].toLowerCase()) {
             case "join":
-                if (!configManager.hasPermission(player, "join") && !queueManager.canBypassQueue(player)) {
-                    player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize("&cYou don't have permission!"));
-                    return;
-                }
                 if (args.length == 2) {
                     queueManager.addToQueue(player, args[1]);
                 } else {
@@ -76,7 +72,7 @@ public class QueueCommand implements SimpleCommand {
     }
 
     private void sendHelp(Player player) {
-        player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize("&6===== SevoQueue Help ====="));
+        player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize("&6===== Queue Help ====="));
         player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize("&e/queue join <server> &7- Join queue for a server"));
         player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize("&e/queue leave &7- Leave current queue"));
         player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize("&e/queue status &7- Check your queue status"));

@@ -7,6 +7,8 @@ import com.velocitypowered.api.proxy.server.RegisteredServer;
 import com.velocitypowered.api.proxy.server.ServerPing;
 import org.slf4j.Logger;
 
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -54,7 +56,8 @@ public class Addons {
 
         if (oldStatus != newStatus) {
             serverStatus.put(serverName, newStatus);
-            logger.info("Server {} status: {} -> {}", serverName, oldStatus, newStatus);
+            // لاگ تکراری تغییر وضعیت سرور غیرفعال شد
+            // logger.info("Server {} status: {} -> {}", serverName, oldStatus, newStatus);
             onStatusChange(serverName, oldStatus, newStatus);
         } else {
             serverStatus.put(serverName, newStatus);
@@ -80,14 +83,31 @@ public class Addons {
             serverRestartTime.remove(serverName);
         }
 
-        Long offlineTime = serverOfflineTime.get(serverName);
-        if (offlineTime == null) {
-            offlineTime = System.currentTimeMillis();
-            serverOfflineTime.put(serverName, offlineTime);
+        boolean portOpen = isPortOpen(rs);
+        if (portOpen) {
+            // پورت TCP باز است یعنی پروسه‌ی جاوای سرور بالا آمده،
+            // ولی هنوز به هندشیک پروتکل ماینکرفت جواب نمی‌دهد (دارد world/plugin ها را لود می‌کند)
+            serverOfflineTime.remove(serverName);
+            return ServerStatus.STARTING;
         }
 
-        long elapsed = (System.currentTimeMillis() - offlineTime) / 1000;
-        return elapsed < RESTART_TIMEOUT ? ServerStatus.STARTING : ServerStatus.OFFLINE;
+        serverOfflineTime.putIfAbsent(serverName, System.currentTimeMillis());
+        return ServerStatus.OFFLINE;
+    }
+
+    /**
+     * چک سطح TCP، بدون هندشیک پروتکل ماینکرفت.
+     * فقط می‌خواهیم بدانیم پورت باز است یا نه؛ اگر باز باشد پروسه در حال اجراست
+     * حتی اگر هنوز به پینگ ماینکرفتی جواب ندهد.
+     */
+    private boolean isPortOpen(RegisteredServer rs) {
+        InetSocketAddress address = rs.getServerInfo().getAddress();
+        try (Socket socket = new Socket()) {
+            socket.connect(address, 1000);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private ServerStatus pingServerStatus(RegisteredServer rs, String serverName) {
@@ -113,6 +133,8 @@ public class Addons {
     }
 
     private void onStatusChange(String serverName, ServerStatus oldStatus, ServerStatus newStatus) {
+        // تمام لاگ‌های دوره‌ای و مکرر وضعیت سرور غیرفعال شدند
+        /*
         switch (newStatus) {
             case RESTARTING:
                 logger.info("Server {} is restarting...", serverName);
@@ -130,6 +152,7 @@ public class Addons {
                 logger.warn("Server {} is offline!", serverName);
                 break;
         }
+        */
     }
 
     @Subscribe
@@ -166,13 +189,6 @@ public class Addons {
             case OFFLINE:
                 return "&cError: Server Is Offline";
             case STARTING:
-                Long offlineTime = serverOfflineTime.get(serverName);
-                if (offlineTime != null) {
-                    long remaining = RESTART_TIMEOUT - ((System.currentTimeMillis() - offlineTime) / 1000);
-                    if (remaining > 0) {
-                        return "&6Server Is Starting... (&e" + remaining + "s&6)";
-                    }
-                }
                 return "&6Server Is Starting...";
             case RESTARTING:
                 Long restartTime = serverRestartTime.get(serverName);
@@ -195,6 +211,10 @@ public class Addons {
     public boolean canConnectToServer(String serverName) {
         ServerStatus status = getCurrentStatus(serverName);
         return status == ServerStatus.ONLINE;
+    }
+
+    public ServerStatus getCurrentStatusPublic(String serverName) {
+        return getCurrentStatus(serverName);
     }
 
     private ServerStatus getCurrentStatus(String serverName) {

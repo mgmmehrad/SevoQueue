@@ -29,11 +29,6 @@ public class ServerCommandHandler implements SimpleCommand {
 
         Player player = (Player) source;
 
-        if (!configManager.hasPermission(player, "server") && !queueManager.canBypassQueue(player)) {
-            player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize("&cYou don't have permission!"));
-            return;
-        }
-
         if (args.length == 0) {
             player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize("&cUsage: /server <servername>"));
             return;

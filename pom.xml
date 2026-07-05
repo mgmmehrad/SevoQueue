@@ -6,7 +6,7 @@
 
     <groupId>org.mgmmehrad</groupId>
     <artifactId>SevoQueue</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.3</version>
     <packaging>jar</packaging>
 
     <properties>
@@ -16,6 +16,18 @@
     </properties>
 
     <repositories>
+        <repository>
+            <id>opencollab-snapshot-repo</id>
+            <url>https://repo.opencollab.dev/maven-snapshots/</url>
+            <releases><enabled>true</enabled></releases>
+            <snapshots><enabled>true</enabled></snapshots>
+        </repository>
+        <repository>
+            <id>opencollab-release-repo</id>
+            <url>https://repo.opencollab.dev/maven-releases/</url>
+            <releases><enabled>true</enabled></releases>
+            <snapshots><enabled>false</enabled></snapshots>
+        </repository>
         <repository>
             <id>papermc</id>
             <url>https://repo.papermc.io/repository/maven-public/</url>
@@ -27,7 +39,6 @@
     </repositories>
 
     <dependencies>
-        <!-- BungeeCord API -->
         <dependency>
             <groupId>net.md-5</groupId>
             <artifactId>bungeecord-api</artifactId>
@@ -35,7 +46,6 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Config Library -->
         <dependency>
             <groupId>org.spongepowered</groupId>
             <artifactId>configurate-yaml</artifactId>
@@ -43,7 +53,6 @@
             <scope>compile</scope>
         </dependency>
 
-        <!-- Velocity API -->
         <dependency>
             <groupId>com.velocitypowered</groupId>
             <artifactId>velocity-api</artifactId>
@@ -51,7 +60,6 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Adventure API for Velocity -->
         <dependency>
             <groupId>net.kyori</groupId>
             <artifactId>adventure-api</artifactId>
@@ -59,7 +67,6 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Guice for Velocity -->
         <dependency>
             <groupId>com.google.inject</groupId>
             <artifactId>guice</artifactId>
@@ -67,11 +74,24 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- SLF4J for Velocity -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>2.0.9</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.papermc.paper</groupId>
+            <artifactId>paper-api</artifactId>
+            <version>1.20.4-R0.1-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.geysermc.geyser</groupId>
+            <artifactId>api</artifactId>
+            <version>2.4.2-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>

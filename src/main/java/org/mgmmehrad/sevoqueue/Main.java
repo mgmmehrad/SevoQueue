@@ -73,6 +73,12 @@ public class Main {
                 .build();
         commandManager.register(queueMeta, new QueueCommand(queueManager, configManager));
 
+        // Register /leavequeue command
+        CommandMeta leaveQueueMeta = commandManager.metaBuilder("leavequeue")
+                .plugin(this)
+                .build();
+        commandManager.register(leaveQueueMeta, new LeaveQueueCommand(queueManager));
+
         // Register /sevoqueue command (reload)
         CommandMeta sevoqueueMeta = commandManager.metaBuilder("sevoqueue")
                 .aliases("svq")
@@ -159,6 +165,28 @@ public class Main {
         return pluginDisplayName;
     }
 
+    // ==================== LeaveQueue Command ====================
+    private class LeaveQueueCommand implements SimpleCommand {
+        private final QueueManager queueManager;
+
+        public LeaveQueueCommand(QueueManager queueManager) {
+            this.queueManager = queueManager;
+        }
+
+        @Override
+        public void execute(Invocation invocation) {
+            CommandSource source = invocation.source();
+
+            if (!(source instanceof Player)) {
+                source.sendMessage(Component.text("Only players can use this command.", NamedTextColor.RED));
+                return;
+            }
+
+            Player player = (Player) source;
+            queueManager.removeFromQueue(player);
+        }
+    }
+
     // ==================== SevoQueue Reload Command ====================
     private class SevoQueueReloadCommand implements SimpleCommand {
         @Override
@@ -205,18 +233,12 @@ public class Main {
             }
 
             if (args.length < 2) {
-                source.sendMessage(Component.text("Usage: /send <player> <server>", NamedTextColor.YELLOW));
+                source.sendMessage(Component.text("Usage: /send <player|all> <server>", NamedTextColor.YELLOW));
                 return;
             }
 
             String playerName = args[0];
             String serverName = args[1];
-
-            Optional<Player> targetPlayer = server.getPlayer(playerName);
-            if (targetPlayer.isEmpty()) {
-                source.sendMessage(Component.text("Player not found!", NamedTextColor.RED));
-                return;
-            }
 
             Optional<RegisteredServer> targetServer = server.getServer(serverName);
             if (targetServer.isEmpty()) {
@@ -224,17 +246,40 @@ public class Main {
                 return;
             }
 
-            Player player = targetPlayer.get();
+            if (playerName.equalsIgnoreCase("all")) {
+                Collection<Player> allPlayers = server.getAllPlayers();
+                int sentCount = 0;
 
-            if (queueManager.isInQueue(player)) {
-                queueManager.removeFromQueue(player);
+                for (Player player : allPlayers) {
+                    boolean alreadyThere = player.getCurrentServer()
+                            .map(connection -> connection.getServerInfo().getName().equalsIgnoreCase(targetServer.get().getServerInfo().getName()))
+                            .orElse(false);
+                    if (alreadyThere) {
+                        continue;
+                    }
+
+                    sendPlayerToServer(player, targetServer.get(), serverName, source);
+                    sentCount++;
+                }
+
+                source.sendMessage(Component.text("Sent " + sentCount + " player(s) to " + serverName + " queue", NamedTextColor.GREEN));
+                return;
             }
 
-            queueManager.setConnectingViaQueue(player, true);
-            player.createConnectionRequest(targetServer.get()).connect()
-                    .whenComplete((result, throwable) -> queueManager.setConnectingViaQueue(player, false));
-            source.sendMessage(Component.text("Sent " + playerName + " to " + serverName, NamedTextColor.GREEN));
-            player.sendMessage(Component.text("You were teleported to " + serverName + " by " + source, NamedTextColor.YELLOW));
+            Optional<Player> targetPlayer = server.getPlayer(playerName);
+            if (targetPlayer.isEmpty()) {
+                source.sendMessage(Component.text("Player not found!", NamedTextColor.RED));
+                return;
+            }
+
+            Player player = targetPlayer.get();
+            sendPlayerToServer(player, targetServer.get(), serverName, source);
+            source.sendMessage(Component.text("Sent " + playerName + " to " + serverName + " queue", NamedTextColor.GREEN));
+            player.sendMessage(Component.text("You were sent to the queue for " + serverName + " by " + source, NamedTextColor.YELLOW));
+        }
+
+        private void sendPlayerToServer(Player player, RegisteredServer targetServer, String serverName, CommandSource source) {
+            queueManager.addToQueue(player, serverName);
         }
 
         @Override
@@ -247,6 +292,9 @@ public class Main {
             }
 
             if (args.length == 1) {
+                if ("all".startsWith(args[0].toLowerCase())) {
+                    suggestions.add("all");
+                }
                 for (Player player : server.getAllPlayers()) {
                     if (player.getUsername().toLowerCase().startsWith(args[0].toLowerCase())) {
                         suggestions.add(player.getUsername());
@@ -277,11 +325,6 @@ public class Main {
             }
 
             Player player = (Player) source;
-
-            if (!configManager.hasPermission(player, "server") && !queueManager.canBypassQueue(player)) {
-                player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize("&cYou don't have permission!"));
-                return;
-            }
 
             if (args.length == 0) {
                 player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize("&cUsage: /server <servername>"));
@@ -346,11 +389,6 @@ public class Main {
                     }
 
                     Player player = (Player) invocation.source();
-
-                    if (!configManager.hasPermission(player, "slashserver") && !queueManager.canBypassQueue(player)) {
-                        player.sendMessage(Component.text("You don't have permission!", NamedTextColor.RED));
-                        return;
-                    }
 
                     if (queueManager.isInQueue(player)) {
                         player.sendMessage(Component.text("You are already in a queue! Use /queue leave first.", NamedTextColor.RED));
