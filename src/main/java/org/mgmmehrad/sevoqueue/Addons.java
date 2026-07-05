@@ -95,11 +95,7 @@ public class Addons {
         return ServerStatus.OFFLINE;
     }
 
-    /**
-     * چک سطح TCP، بدون هندشیک پروتکل ماینکرفت.
-     * فقط می‌خواهیم بدانیم پورت باز است یا نه؛ اگر باز باشد پروسه در حال اجراست
-     * حتی اگر هنوز به پینگ ماینکرفتی جواب ندهد.
-     */
+
     private boolean isPortOpen(RegisteredServer rs) {
         InetSocketAddress address = rs.getServerInfo().getAddress();
         try (Socket socket = new Socket()) {
@@ -133,8 +129,6 @@ public class Addons {
     }
 
     private void onStatusChange(String serverName, ServerStatus oldStatus, ServerStatus newStatus) {
-        // تمام لاگ‌های دوره‌ای و مکرر وضعیت سرور غیرفعال شدند
-        /*
         switch (newStatus) {
             case RESTARTING:
                 logger.info("Server {} is restarting...", serverName);

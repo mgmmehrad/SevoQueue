@@ -91,7 +91,6 @@ public class QueueManager {
 
         int position = queue.size();
 
-        // چک کردن برای ارسال پیام صحیح بر اساس وضعیت
         if (serverConnectable) {
             long waitTime = getEstimatedWaitSeconds(playerId, serverName);
             String message = configManager.getQueueMessage()
@@ -176,7 +175,6 @@ public class QueueManager {
         return message == null ? "" : message.replace((char) 167, '&');
     }
 
-    // تبدیل وضعیت به یک متن کوتاه و مرتب برای Reason
     private String getReasonString(Addons.ServerStatus status) {
         switch (status) {
             case FULL: return "Full";
@@ -201,8 +199,6 @@ public class QueueManager {
                 if (position == -1) continue;
 
                 Addons.ServerStatus status = addons.getCurrentStatusPublic(serverName);
-
-                // اگر سرور آنلاین بود، زمان رو نشون بده. در غیر این صورت وضعیت (دلیل) رو بنویس
                 if (status == Addons.ServerStatus.ONLINE) {
                     long remainingTime = getEstimatedWaitSeconds(playerId, serverName);
                     String actionBarMsg = configManager.getActionBarMessage()

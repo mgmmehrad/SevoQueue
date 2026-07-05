@@ -31,9 +31,6 @@ public class PlayerJoinListener {
         Player player = event.getPlayer();
         String defaultServer = configManager.getDefaultServer();
 
-        // لاگ جوین اولیه غیرفعال شد
-        // logger.info("Player {} is joining for the first time", player.getUsername());
-
         server.getServer(defaultServer).ifPresentOrElse(
                 s -> {
                     event.setInitialServer(s);
@@ -98,7 +95,6 @@ public class PlayerJoinListener {
     @Subscribe
     public void onDisconnect(DisconnectEvent event) {
         Player player = event.getPlayer();
-        // خروج بازیکن از صف در هنگام قطع کامل ارتباط از نتورک (نوعی دیسکانکت)
         queueManager.removeFromQueue(player, false);
         queueManager.setConnectingViaQueue(player, false);
     }
