@@ -1,29 +1,29 @@
-# About The SevoQueue
+# 🚀 About SevoQueue
 
-This Plugin Was Created By SevoDevelopment Team And Were Here For Give you the best performance
+SevoQueue is developed by the **SevoDevelopment** team. Our mission is to provide the highest performance queue system for your Minecraft network without compromising server stability.
 
-# Features
-- **No Spigot Bridge Needed**
-- **Free**
-- **Supports Every Proxy** (Bungee, Velocity)
+# ✨ Features
+- ❌ **No Spigot Bridge Needed** (Runs entirely on the proxy)
+- 💸 **100% Free & Open Source**
+- 🌐 **Supports Major Proxies** (BungeeCord & Velocity)
+- ⚡ **Ultra Lightweight** (Zero lag, optimized for high player counts)
 
-## Whats In This Plugin?
+---
 
-A Feature You Can Go Into A Queue Or Bypass It With a Permission
-You Can Turn Off Or On The Permissions In Config.yml
+## 🛠️ Dynamic Permission System
+Players can wait in the queue or bypass it instantly using specific permissions. You can easily enable, disable, or customize all permissions directly within the `config.yml` file to fit your server's needs.
 
-And This Plugin Is Completly Free
+## 🤝 Compatibility
+SevoQueue works seamlessly with popular NPC plugins, making it easy to set up your lobby selectors:
+- [Znpcs](https://www.spigotmc.org/resources/znpcs.80940/)
+- [FancyNpcs](https://modrinth.com/plugin/fancynpcs)
+- [Citizens](https://www.spigotmc.org/resources/citizens.13811/)
+- And many more...
 
-## Permissions
+---
 
-- All permissions are located in the `config.yml` file.
-- You can enable or disable each one as you wish.
+## 🔗 Links & Support
 
-## Why SevoQueue?
-
-- Because Its So lightweight
-- No Bridge Needed
-- Supports NPC Plugins Like: Znpcs, FancyNpcs, Citizens And More...
-
-
-Github: github.com/mgmmehrad
+- 💻 **GitHub Repository:** [github.com/mgmmehrad](https://github.com/mgmmehrad)
+- 💬 **Discord Server:** [Join Our Discord](https://discord.gg/hNZrzD6c)
+- ✉️ **Contact Us:** [Get Support](https://discord.gg/hNZrzD6c)
