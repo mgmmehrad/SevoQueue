@@ -57,7 +57,6 @@ public class Addons {
         if (oldStatus != newStatus) {
             serverStatus.put(serverName, newStatus);
             // لاگ تکراری تغییر وضعیت سرور غیرفعال شد
-            // logger.info("Server {} status: {} -> {}", serverName, oldStatus, newStatus);
             onStatusChange(serverName, oldStatus, newStatus);
         } else {
             serverStatus.put(serverName, newStatus);
