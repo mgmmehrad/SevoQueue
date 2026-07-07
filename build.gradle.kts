@@ -1,3 +1,12 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("com.guardsquare:proguard-gradle:7.4.2")
+    }
+}
+
 plugins {
     java
 }
@@ -63,5 +72,39 @@ tasks.processResources {
 
     filesNotMatching("**/*.png") {
         expand(props)
+    }
+}
+
+// تسک پروگارد هماهنگ شده با فرآیند ساخت پروژه
+val proguardTask = tasks.register<proguard.gradle.ProGuardTask>("proguard") {
+    dependsOn(tasks.jar)
+
+    // فایل ورودی همان جار ساخته شده است
+    injars(tasks.jar.get().archiveFile)
+
+    // خروجی در یک فایل موقت ذخیره می‌شود تا تداخل ایجاد نکند
+    val tempOut = layout.buildDirectory.file("libs/${project.name}-${project.version}-protected.jar")
+    outjars(tempOut)
+
+    // لایبرری‌های جاوا ۱۷ و وابستگی‌های پروژه
+    libraryjars("${System.getProperty("java.home")}/jmods/java.base.jmod")
+    libraryjars(configurations.compileClasspath.get().files)
+
+    // خواندن تنظیمات از فایل proguard.pro
+    configuration("proguard.pro")
+}
+
+// جایگزین کردن فایل اصلی با فایل ابفاسکیت شده پس از اجرای دستور build
+tasks.build {
+    dependsOn(proguardTask)
+    doLast {
+        val finalJar = tasks.jar.get().archiveFile.get().asFile
+        val obfuscatedJar = layout.buildDirectory.file("libs/${project.name}-${project.version}-protected.jar").get().asFile
+
+        if (obfuscatedJar.exists()) {
+            finalJar.delete()
+            obfuscatedJar.renameTo(finalJar)
+            logger.lifecycle("ProGuard applied successfully to ${finalJar.name}!")
+        }
     }
 }

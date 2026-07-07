@@ -145,7 +145,6 @@ public class Addons {
                 logger.warn("Server {} is offline!", serverName);
                 break;
         }
-        */
     }
 
     @Subscribe
