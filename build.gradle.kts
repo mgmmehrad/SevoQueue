@@ -12,7 +12,7 @@ plugins {
 }
 
 group = "org.mgmmehrad"
-version = "1.0.4"
+version = "1.0.5"
 
 val javaVersion = 17
 val bungeecordVersion = "1.21-R0.3"
@@ -43,6 +43,8 @@ dependencies {
 
     // کتابخانه‌ای که باید حتماً به داخل پلاگین شما تزریق شود
     implementation("org.spongepowered:configurate-yaml:4.1.2")
+    // کتابخانه bStats برای Metrics
+    implementation("org.bstats:bstats-velocity:3.2.1")
 }
 
 // ساخت خودکار فایل Fat JAR (ترکیب فایل‌ها) بدون نیاز به افزونه Shadow

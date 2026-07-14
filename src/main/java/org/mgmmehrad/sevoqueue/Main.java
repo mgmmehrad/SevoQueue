@@ -1,10 +1,6 @@
 package org.mgmmehrad.sevoqueue;
 
-import com.google.inject.Inject;
-import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
-import com.velocitypowered.api.plugin.Plugin;
-import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.command.CommandMeta;
@@ -17,6 +13,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.slf4j.Logger;
+import org.bstats.velocity.Metrics;
 
 import java.nio.file.Path;
 import java.util.Collection;
@@ -25,11 +22,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
-@Plugin(id = "sevoqueue", name = "SevoQueue", version = "1.0.0", authors = {"mgmmehrad"})
 public class Main {
+    private final Object pluginInstance; // ذخیره اینستنس واقعی پلاگین
     private final ProxyServer server;
     private final Logger logger;
     private final Path dataDirectory;
+    private final Metrics.Factory metricsFactory;
     private ConfigManager configManager;
     private QueueManager queueManager;
     private PlayerJoinListener joinListener;
@@ -38,15 +36,24 @@ public class Main {
     private boolean licenseValid = false;
     private String pluginDisplayName = "SevoQueue";
 
-    @Inject
-    public Main(ProxyServer server, Logger logger, @DataDirectory Path dataDirectory) {
+    public Main(Object pluginInstance, ProxyServer server, Logger logger, Path dataDirectory, Metrics.Factory metricsFactory) {
+        this.pluginInstance = pluginInstance;
         this.server = server;
         this.logger = logger;
         this.dataDirectory = dataDirectory;
+        this.metricsFactory = metricsFactory;
     }
 
-    @Subscribe
-    public void onProxyInitialization(ProxyInitializeEvent event) {
+    public void initialize(ProxyInitializeEvent event) {
+        // Initialize bStats Metrics using the real plugin instance
+        int pluginId = 32579;
+        try {
+            metricsFactory.make(pluginInstance, pluginId); // اصلاح شد: استفاده از pluginInstance به جای this
+            logger.info("[bStats] Metrics connected successfully to ID: {}", pluginId);
+        } catch (Exception e) {
+            logger.error("[bStats] Failed to connect to Metrics (ID: {}). Error: {}", pluginId, e.getMessage());
+        }
+
         configManager = new ConfigManager(dataDirectory, logger);
         configManager.loadConfig();
         checkLicenseAndUpdateName();
@@ -56,39 +63,38 @@ public class Main {
             return;
         }
 
-        queueManager = new QueueManager(server, logger, configManager, this);
+        // اصلاح شد: به جای this، نمونه واقعی پلاگین (pluginInstance) فرستاده می‌شود
+        queueManager = new QueueManager(server, logger, configManager, pluginInstance);
         joinListener = new PlayerJoinListener(server, logger, queueManager, configManager);
 
-        // Register listeners
-        server.getEventManager().register(this, joinListener);
-
-        // Register server status listener
-        server.getEventManager().register(this, queueManager.getAddons());
+        // Register listeners - استفاده از pluginInstance به جای this برای ثبت اونت‌ها
+        server.getEventManager().register(pluginInstance, joinListener);
+        server.getEventManager().register(pluginInstance, queueManager.getAddons());
 
         CommandManager commandManager = server.getCommandManager();
 
         // Register /queue command
         CommandMeta queueMeta = commandManager.metaBuilder("queue")
-                .plugin(this)
+                .plugin(pluginInstance) // اصلاح شد
                 .build();
         commandManager.register(queueMeta, new QueueCommand(queueManager, configManager));
 
         // Register /leavequeue command
         CommandMeta leaveQueueMeta = commandManager.metaBuilder("leavequeue")
-                .plugin(this)
+                .plugin(pluginInstance) // اصلاح شد
                 .build();
         commandManager.register(leaveQueueMeta, new LeaveQueueCommand(queueManager));
 
         // Register /sevoqueue command (reload)
         CommandMeta sevoqueueMeta = commandManager.metaBuilder("sevoqueue")
                 .aliases("svq")
-                .plugin(this)
+                .plugin(pluginInstance) // اصلاح شد
                 .build();
         commandManager.register(sevoqueueMeta, new SevoQueueReloadCommand());
 
         // Register /send command
         CommandMeta sendMeta = commandManager.metaBuilder("send")
-                .plugin(this)
+                .plugin(pluginInstance) // اصلاح شد
                 .build();
         commandManager.register(sendMeta, new SendCommand());
 
@@ -100,7 +106,7 @@ public class Main {
 
             // Register /server command
             CommandMeta serverMeta = commandManager.metaBuilder("server")
-                    .plugin(this)
+                    .plugin(pluginInstance) // اصلاح شد
                     .build();
             commandManager.register(serverMeta, new ServerCommand());
         }
@@ -377,7 +383,7 @@ public class Main {
             }
 
             CommandMeta commandMeta = commandManager.metaBuilder(serverName)
-                    .plugin(this)
+                    .plugin(pluginInstance) // اصلاح شد
                     .build();
 
             commandManager.register(commandMeta, new RawCommand() {
