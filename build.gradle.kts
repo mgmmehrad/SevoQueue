@@ -12,7 +12,7 @@ plugins {
 }
 
 group = "org.mgmmehrad"
-version = "1.0.5"
+version = "1.0.6"
 
 val javaVersion = 17
 val bungeecordVersion = "1.21-R0.3"
@@ -38,8 +38,6 @@ dependencies {
     compileOnly("net.kyori:adventure-api:4.17.0")
     compileOnly("com.google.inject:guice:5.1.0")
     compileOnly("org.slf4j:slf4j-api:2.0.9")
-    compileOnly("io.papermc.paper:paper-api:1.20.4-R0.1-SNAPSHOT")
-    compileOnly("org.geysermc.geyser:api:2.4.2-SNAPSHOT")
 
     // کتابخانه‌ای که باید حتماً به داخل پلاگین شما تزریق شود
     implementation("org.spongepowered:configurate-yaml:4.1.2")

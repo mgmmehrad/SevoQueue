@@ -35,7 +35,6 @@ public class PlayerJoinListener {
                 s -> {
                     event.setInitialServer(s);
                     sendMessage(player, "&aWelcome! You have been connected to &e" + defaultServer);
-                    // logger.info("Sent {} to default server: {}", player.getUsername(), defaultServer);
                 },
                 () -> {
                     logger.warn("Default server {} not found!", defaultServer);
@@ -49,46 +48,52 @@ public class PlayerJoinListener {
         Player player = event.getPlayer();
         String targetServer = event.getOriginalServer().getServerInfo().getName();
 
+        // 1. اگر بازیکن توسط خود سیستم صف در حال متصل شدن است، اجازه اتصال بده
         if (queueManager.isConnectingViaQueue(player)) {
-            // logger.info("Allowing queue-initiated connection for {} to {}", player.getUsername(), targetServer);
             queueManager.setConnectingViaQueue(player, false);
             return;
         }
 
+        // 2. اگر بازیکن از قبل داخل یک صف حضور دارد، اتصال مستقیم جدید را مسدود کن
         if (queueManager.isInQueue(player)) {
-            // logger.info("Player {} is in queue, blocking connection to {}", player.getUsername(), targetServer);
             event.setResult(ServerPreConnectEvent.ServerResult.denied());
             sendMessage(player, "&cYou are in queue! Use &e/queue leave &cto cancel.");
             return;
         }
 
-        if (!queueManager.getAddons().canConnectToServer(targetServer)) {
-            String statusMsg = queueManager.getAddons().getServerStatusMessage(targetServer);
-            if (statusMsg != null) {
-                // logger.info("Server {} is not available for {}", targetServer, player.getUsername());
-                event.setResult(ServerPreConnectEvent.ServerResult.denied());
-                sendMessage(player, statusMsg);
-                return;
+        // 3. مدیریت بازیکنانی که پرمیشن بای‌پاس دارند یا اولین ورودشان به سرور (پراکسی) است
+        boolean isInitialConnection = player.getCurrentServer().isEmpty();
+        boolean canBypass = queueManager.canBypassQueue(player);
+
+        if (isInitialConnection || canBypass) {
+            if (!queueManager.getAddons().canConnectToServer(targetServer)) {
+                String statusMsg = queueManager.getAddons().getServerStatusMessage(targetServer);
+                if (statusMsg != null) {
+                    event.setResult(ServerPreConnectEvent.ServerResult.denied());
+                    sendMessage(player, statusMsg);
+                    return;
+                }
             }
-        }
-
-        if (queueManager.canBypassQueue(player)) {
-            queueManager.removeFromQueue(player, false);
-            // logger.info("Allowing bypass connection for {} to {}", player.getUsername(), targetServer);
+            if (canBypass) {
+                queueManager.removeFromQueue(player, false);
+            }
             return;
         }
 
-        if (player.getCurrentServer().isEmpty()) {
-            // logger.info("Allowing initial connection for {} to {}", player.getUsername(), targetServer);
-            return;
-        }
-
+        // 4. برای انتقال‌های معمولی و کلیک روی NPC های Znpcs
         if (configManager.isVelocityServerCommand()) {
-            // logger.info("Blocking direct /server command for {} to {}", player.getUsername(), targetServer);
+            // اتصال مستقیم اولیه را مسدود کن و بازیکن را به سیستم صف بفرست (چه سرور آنلاین باشد چه آفلاین/Starting)
             event.setResult(ServerPreConnectEvent.ServerResult.denied());
             queueManager.addToQueue(player, targetServer);
         } else {
-            // logger.info("Allowing direct connection for {} to {}", player.getUsername(), targetServer);
+            // اگر قابلیت فورس کردن صف غیرفعال است، فقط در صورت آفلاین بودن سرور ارور معمولی بده
+            if (!queueManager.getAddons().canConnectToServer(targetServer)) {
+                String statusMsg = queueManager.getAddons().getServerStatusMessage(targetServer);
+                if (statusMsg != null) {
+                    event.setResult(ServerPreConnectEvent.ServerResult.denied());
+                    sendMessage(player, statusMsg);
+                }
+            }
         }
     }
 
