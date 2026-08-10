@@ -1,24 +1,41 @@
-Hello
+# 🚀 About SevoQueue
 
-Im Mgmmehrad
+SevoQueue is developed by the **SevoDevelopment** team. Our mission is to provide the highest performance queue system for your Minecraft network without compromising server stability.
 
-The Main Developer of this plugin and owner of sevodevelopment 
+# ✨ Features
+- ❌ **No Spigot Bridge Needed** (Runs entirely on the proxy)
+- 💸 **100% Free & Open Source**
+- 🌐 **Supports Major Proxies** (BungeeCord & Velocity)
+- ⚡ **Ultra Lightweight** (Zero lag, optimized for high player counts)
 
-If Someone Ask Me:
+---
 
-Are You A Developer?
-Are You SevoDevelopment Owner?
+## 🛠️ Dynamic Permission System
+Players can wait in the queue or bypass it instantly using specific permissions. You can easily enable, disable, or customize all permissions directly within the `config.yml` file to fit your server's needs.
 
-I Will Say
+## 🤝 Compatibility
+SevoQueue works seamlessly with popular plugins, making it easy to set up your lobby selectors:
+- [Znpcs](https://www.spigotmc.org/resources/znpcs.80940/)
+- [FancyNpcs](https://modrinth.com/plugin/fancynpcs)
+- [Citizens](https://www.spigotmc.org/resources/citizens.13811/)
+- [SuperLobby](https://www.spigotmc.org/resources/%E2%9C%AA-superlobbydeluxe-1-8-8-1-21-x-%E2%9C%AA.20400/)
+- [DeluxeHub](https://modrinth.com/plugin/deluxehub)
+- And many more...
 
-Not Anymore😢
+---
 
-You Can Read The readme.md in Modrinth I Tell It There 
+## 🔗 Links & Support
 
-See You Until I Get Fomous!
+- 💻 **GitHub Repository:** [github.com/mgmmehrad](https://github.com/mgmmehrad/sevoqueue)
+- 💬 **Discord Server:** [Join Our Discord](https://discord.gg/M93bqm9K2)
+- ✉️ **Contact Us:** [Get Support](https://discord.gg/M93bqm9K2)
 
-And If You Wan't To Know Where I Am From
+---
 
-It Sounds Weird But....
+<div align="center">
 
-IRAN
+## 📊 Stats
+
+[![bStats Chart](https://bstats.org/signatures/velocity/SevoQueue.svg)](https://bstats.org/plugin/velocity/SevoQueue/32579)
+
+</div>
