@@ -14,16 +14,28 @@ SevoQueue is developed by the **SevoDevelopment** team. Our mission is to provid
 Players can wait in the queue or bypass it instantly using specific permissions. You can easily enable, disable, or customize all permissions directly within the `config.yml` file to fit your server's needs.
 
 ## 🤝 Compatibility
-SevoQueue works seamlessly with popular NPC plugins, making it easy to set up your lobby selectors:
+SevoQueue works seamlessly with popular plugins, making it easy to set up your lobby selectors:
 - [Znpcs](https://www.spigotmc.org/resources/znpcs.80940/)
 - [FancyNpcs](https://modrinth.com/plugin/fancynpcs)
 - [Citizens](https://www.spigotmc.org/resources/citizens.13811/)
+- [SuperLobby](https://www.spigotmc.org/resources/%E2%9C%AA-superlobbydeluxe-1-8-8-1-21-x-%E2%9C%AA.20400/)
+- [DeluxeHub](https://modrinth.com/plugin/deluxehub)
 - And many more...
 
 ---
 
 ## 🔗 Links & Support
 
-- 💻 **GitHub Repository:** [github.com/mgmmehrad](https://github.com/mgmmehrad)
-- 💬 **Discord Server:** [Join Our Discord](https://discord.gg/hNZrzD6c)
-- ✉️ **Contact Us:** [Get Support](https://discord.gg/hNZrzD6c)
+- 💻 **GitHub Repository:** [github.com/mgmmehrad](https://github.com/mgmmehrad/sevoqueue)
+- 💬 **Discord Server:** [Join Our Discord](https://discord.gg/M93bqm9K2)
+- ✉️ **Contact Us:** [Get Support](https://discord.gg/M93bqm9K2)
+
+---
+
+<div align="center">
+
+## 📊 Stats
+
+[![bStats Chart](https://bstats.org/signatures/velocity/SevoQueue.svg)](https://bstats.org/plugin/velocity/SevoQueue/32579)
+
+</div>
