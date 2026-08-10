@@ -4,8 +4,13 @@ import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
+import com.velocitypowered.api.proxy.server.RegisteredServer;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.slf4j.Logger;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 public class ServerCommandHandler implements SimpleCommand {
     private final ProxyServer server;
@@ -35,12 +40,27 @@ public class ServerCommandHandler implements SimpleCommand {
         }
 
         String serverName = args[0];
+        queueManager.addToQueue(player, serverName);
+    }
 
-        if (queueManager.isInQueue(player)) {
-            player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize("&cYou are already in a queue! Use &e/queue leave &cfirst."));
-            return;
+    @Override
+    public CompletableFuture<List<String>> suggestAsync(Invocation invocation) {
+        String[] args = invocation.arguments();
+        List<String> suggestions = new ArrayList<>();
+
+        if (!configManager.hasPermission(invocation.source(), "tabcomplete")) {
+            return CompletableFuture.completedFuture(suggestions);
         }
 
-        queueManager.addToQueue(player, serverName);
+        if (args.length == 1) {
+            for (RegisteredServer s : server.getAllServers()) {
+                String serverName = s.getServerInfo().getName();
+                if (serverName.toLowerCase().startsWith(args[0].toLowerCase())) {
+                    suggestions.add(serverName);
+                }
+            }
+        }
+
+        return CompletableFuture.completedFuture(suggestions);
     }
 }

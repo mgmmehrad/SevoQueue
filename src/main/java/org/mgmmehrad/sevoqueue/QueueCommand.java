@@ -8,6 +8,7 @@ import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 public class QueueCommand implements SimpleCommand {
@@ -50,7 +51,23 @@ public class QueueCommand implements SimpleCommand {
                     player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize("&cYou don't have permission!"));
                     return;
                 }
-                queueManager.removeFromQueue(player);
+                Set<String> queues = queueManager.getPlayerQueues(player);
+                if (queues.isEmpty()) {
+                    player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(configManager.getNotInQueueMsg()));
+                    return;
+                }
+
+                if (args.length == 1) { // فقط زده /queue leave
+                    if (queues.size() > 1) {
+                        player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(configManager.getMultipleQueuesLeaveMsg()));
+                        return;
+                    }
+                    String server = queues.iterator().next();
+                    queueManager.removeFromQueue(player, server, true);
+                } else {
+                    String server = args[1];
+                    queueManager.removeFromQueue(player, server, true);
+                }
                 break;
 
             case "status":
@@ -58,11 +75,13 @@ public class QueueCommand implements SimpleCommand {
                     player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize("&cYou don't have permission!"));
                     return;
                 }
-                if (queueManager.isInQueue(player)) {
-                    String server = queueManager.getPlayerQueue(player);
-                    player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize("&aYou are in queue for: &e" + server));
+                Set<String> currentQueues = queueManager.getPlayerQueues(player);
+                if (!currentQueues.isEmpty()) {
+                    String serversStr = String.join(", ", currentQueues);
+                    player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(
+                            configManager.getStatusInQueuesMsg().replace("{servers}", serversStr)));
                 } else {
-                    player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize("&cYou are not in any queue!"));
+                    player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(configManager.getNotInQueueMsg()));
                 }
                 break;
 
@@ -74,7 +93,7 @@ public class QueueCommand implements SimpleCommand {
     private void sendHelp(Player player) {
         player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize("&6===== Queue Help ====="));
         player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize("&e/queue join <server> &7- Join queue for a server"));
-        player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize("&e/queue leave &7- Leave current queue"));
+        player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize("&e/queue leave [server] &7- Leave current queue"));
         player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize("&e/queue status &7- Check your queue status"));
     }
 
@@ -94,11 +113,20 @@ public class QueueCommand implements SimpleCommand {
                     suggestions.add(option);
                 }
             }
-        } else if (args.length == 2 && args[0].equalsIgnoreCase("join")) {
-            for (RegisteredServer server : queueManager.getAllServers()) {
-                String serverName = server.getServerInfo().getName();
-                if (serverName.toLowerCase().startsWith(args[1].toLowerCase())) {
-                    suggestions.add(serverName);
+        } else if (args.length == 2) {
+            if (args[0].equalsIgnoreCase("join")) {
+                for (RegisteredServer server : queueManager.getAllServers()) {
+                    String serverName = server.getServerInfo().getName();
+                    if (serverName.toLowerCase().startsWith(args[1].toLowerCase())) {
+                        suggestions.add(serverName);
+                    }
+                }
+            } else if (args[0].equalsIgnoreCase("leave") && invocation.source() instanceof Player) {
+                Player player = (Player) invocation.source();
+                for (String q : queueManager.getPlayerQueues(player)) {
+                    if (q.toLowerCase().startsWith(args[1].toLowerCase())) {
+                        suggestions.add(q);
+                    }
                 }
             }
         }

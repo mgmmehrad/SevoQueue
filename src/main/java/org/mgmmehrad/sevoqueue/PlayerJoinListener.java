@@ -2,6 +2,7 @@ package org.mgmmehrad.sevoqueue;
 
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
+import com.velocitypowered.api.event.player.KickedFromServerEvent;
 import com.velocitypowered.api.event.player.ServerPreConnectEvent;
 import com.velocitypowered.api.event.player.PlayerChooseInitialServerEvent;
 import com.velocitypowered.api.proxy.Player;
@@ -9,6 +10,7 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.slf4j.Logger;
 
 import java.util.Optional;
@@ -18,12 +20,15 @@ public class PlayerJoinListener {
     private final Logger logger;
     private final QueueManager queueManager;
     private final ConfigManager configManager;
+    private final Addons addons;
 
     public PlayerJoinListener(ProxyServer server, Logger logger, QueueManager queueManager, ConfigManager configManager) {
         this.server = server;
         this.logger = logger;
         this.queueManager = queueManager;
         this.configManager = configManager;
+        // گرفتن اینستنس Addons از خود queueManager به جای ساخت مجدد آن با شیء اشتباه
+        this.addons = queueManager.getAddons();
     }
 
     @Subscribe
@@ -34,65 +39,71 @@ public class PlayerJoinListener {
         server.getServer(defaultServer).ifPresentOrElse(
                 s -> {
                     event.setInitialServer(s);
-                    sendMessage(player, "&aWelcome! You have been connected to &e" + defaultServer);
+                    logger.info("Player {} assigned to default initial server {}", player.getUsername(), defaultServer);
                 },
-                () -> {
-                    logger.warn("Default server {} not found!", defaultServer);
-                    event.setInitialServer(null);
-                }
+                () -> logger.warn("Default server '{}' not found for player {}", defaultServer, player.getUsername())
         );
     }
 
     @Subscribe
     public void onServerPreConnect(ServerPreConnectEvent event) {
         Player player = event.getPlayer();
-        String targetServer = event.getOriginalServer().getServerInfo().getName();
+        Optional<RegisteredServer> targetServerOpt = event.getResult().getServer();
 
-        // 1. اگر بازیکن توسط خود سیستم صف در حال متصل شدن است، اجازه اتصال بده
+        if (targetServerOpt.isEmpty()) {
+            return;
+        }
+
+        RegisteredServer targetServer = targetServerOpt.get();
+        String targetServerName = targetServer.getServerInfo().getName();
+
+        // اگر اتصال از طریق خود QueueManager در حال انجام است، اجازه اتصال داده شود
         if (queueManager.isConnectingViaQueue(player)) {
-            queueManager.setConnectingViaQueue(player, false);
             return;
         }
 
-        // 2. اگر بازیکن از قبل داخل یک صف حضور دارد، اتصال مستقیم جدید را مسدود کن
-        if (queueManager.isInQueue(player)) {
-            event.setResult(ServerPreConnectEvent.ServerResult.denied());
-            sendMessage(player, "&cYou are in queue! Use &e/queue leave &cto cancel.");
+        // اگر سرور مقصد همان سرور فعلی بازیکن است، نیازی به پردازش نیست
+        if (player.getCurrentServer().isPresent() &&
+                player.getCurrentServer().get().getServerInfo().getName().equalsIgnoreCase(targetServerName)) {
             return;
         }
 
-        // 3. مدیریت بازیکنانی که پرمیشن بای‌پاس دارند یا اولین ورودشان به سرور (پراکسی) است
-        boolean isInitialConnection = player.getCurrentServer().isEmpty();
-        boolean canBypass = queueManager.canBypassQueue(player);
+        // لغو اتصال مستقیم (مانند کلیک روی NPC یا دستورهای مستقیم Velocity)
+        event.setResult(ServerPreConnectEvent.ServerResult.denied());
 
-        if (isInitialConnection || canBypass) {
-            if (!queueManager.getAddons().canConnectToServer(targetServer)) {
-                String statusMsg = queueManager.getAddons().getServerStatusMessage(targetServer);
-                if (statusMsg != null) {
-                    event.setResult(ServerPreConnectEvent.ServerResult.denied());
-                    sendMessage(player, statusMsg);
-                    return;
-                }
+        // افزودن بازیکن به Queue سرور مربوطه
+        queueManager.addToQueue(player, targetServerName);
+    }
+
+    @Subscribe
+    public void onKickedFromServer(KickedFromServerEvent event) {
+        Player player = event.getPlayer();
+
+        // پاکسازی وضعیت Queue کاربر در صورت کیک شدن
+        queueManager.removeFromAllQueues(player, false);
+        queueManager.setConnectingViaQueue(player, false);
+
+        Optional<Component> reasonOpt = event.getServerKickReason();
+
+        if (reasonOpt.isPresent()) {
+            Component reasonComponent = reasonOpt.get();
+            String reasonStr = PlainTextComponentSerializer.plainText().serialize(reasonComponent);
+
+            if (reasonStr.contains("multiplayer.disconnect.banned")) {
+                reasonStr = "You are banned from this server";
+            } else if (reasonStr.contains("multiplayer.disconnect.not_whitelisted")) {
+                reasonStr = "You are not whitelisted on this server";
             }
-            if (canBypass) {
-                queueManager.removeFromQueue(player, false);
-            }
-            return;
-        }
 
-        // 4. برای انتقال‌های معمولی و کلیک روی NPC های Znpcs
-        if (configManager.isVelocityServerCommand()) {
-            // اتصال مستقیم اولیه را مسدود کن و بازیکن را به سیستم صف بفرست (چه سرور آنلاین باشد چه آفلاین/Starting)
-            event.setResult(ServerPreConnectEvent.ServerResult.denied());
-            queueManager.addToQueue(player, targetServer);
-        } else {
-            // اگر قابلیت فورس کردن صف غیرفعال است، فقط در صورت آفلاین بودن سرور ارور معمولی بده
-            if (!queueManager.getAddons().canConnectToServer(targetServer)) {
-                String statusMsg = queueManager.getAddons().getServerStatusMessage(targetServer);
-                if (statusMsg != null) {
-                    event.setResult(ServerPreConnectEvent.ServerResult.denied());
-                    sendMessage(player, statusMsg);
-                }
+            String customTemplate = configManager.getServerCantConnectOthersMessage();
+            String formattedMsg = customTemplate.replace("{1}", reasonStr);
+
+            Component notifyComponent = formatMessage(formattedMsg);
+
+            if (player.getCurrentServer().isPresent()) {
+                event.setResult(KickedFromServerEvent.Notify.create(notifyComponent));
+            } else {
+                event.setResult(KickedFromServerEvent.DisconnectPlayer.create(notifyComponent));
             }
         }
     }
@@ -100,7 +111,7 @@ public class PlayerJoinListener {
     @Subscribe
     public void onDisconnect(DisconnectEvent event) {
         Player player = event.getPlayer();
-        queueManager.removeFromQueue(player, false);
+        queueManager.removeFromAllQueues(player, false);
         queueManager.setConnectingViaQueue(player, false);
     }
 

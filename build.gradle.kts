@@ -12,7 +12,7 @@ plugins {
 }
 
 group = "org.mgmmehrad"
-version = "1.0.6"
+version = "1.1.0"
 
 val javaVersion = 17
 val bungeecordVersion = "1.21-R0.3"

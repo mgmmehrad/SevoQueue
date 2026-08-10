@@ -26,18 +26,25 @@ public class ConfigManager {
     private String actionBarMessage;
     private String serverCantConnectMessage;
     private String serverCantConnectActionBar;
+    private String serverCantConnectOthersMessage;
     private boolean slashServer;
     private boolean licence;
     private String licenceCode;
     private boolean velocityServerCommand;
     private String defaultServer;
+
+    // متغیرهای پیام‌های جدید
+    private String multipleQueuesLeaveMsg;
+    private String alreadyInQueueMsg;
+    private String leftQueueMsg;
+    private String notInQueueMsg;
+    private String notInSpecificQueueMsg;
+    private String statusInQueuesMsg;
+    private String queueLeaveUsageMsg;
+
     private final Map<String, String> permissionNodes = new HashMap<>();
     private final Map<String, Boolean> permissionEnabled = new HashMap<>();
     private static final Map<String, String> DEFAULT_PERMISSION_NODES = createDefaultPermissionNodes();
-
-    // License System
-    private boolean licenseValid = false;
-    private String pluginDisplayName = "SevoQueue";
 
     public ConfigManager(Path dataDirectory, Logger logger) {
         this.dataDirectory = dataDirectory;
@@ -84,20 +91,39 @@ public class ConfigManager {
             queueSec = Math.max(0, config.node("queue-sec").getInt(5));
             queueMessage = config.node("Queue-Message").getString("&aYou are in position &e{pos} &aYour remaining time is &e{time} &aseconds");
             actionBarMessage = config.node("ActionBar-Message").getString("&eQueue: &a{server} &7| &ePosition: &a{pos} &7| &eTime: &a{time}s");
-
-            // New Config Options
             serverCantConnectMessage = config.node("Server-Cant-Connect-Message").getString("&cServer Is {Reason}&7. &aYou are in position &e{pos}");
             serverCantConnectActionBar = config.node("Server-Cant-Connect-ActionBar").getString("&cServer Is {Reason}&7. &aYou are in position &e{pos}");
+            serverCantConnectOthersMessage = config.node("Server-cant-connect-others-message").getString("{1}");
 
             slashServer = config.node("slash-server").getBoolean(true);
             licence = config.node("licence").getBoolean(false);
             licenceCode = config.node("Licence-Code").getString("");
             velocityServerCommand = config.node("velocity-server-command").getBoolean(true);
             defaultServer = config.node("default-server").getString("lobby");
-            loadPermissions(loader);
 
-            // Check license after loading config
-            checkLicenseAndUpdateName();
+            // تولید خودکار بخش Messages در صورت عدم وجود
+            boolean changed = false;
+            CommentedConfigurationNode messagesNode = config.node("messages");
+            if (messagesNode.virtual()) {
+                messagesNode.node("multiple-queues-leave").raw("&cYou are in multiple queues! Type &e/leavequeue <server> &cfor example.");
+                messagesNode.node("already-in-queue").raw("&cYou are already in the queue for &e{server}!");
+                messagesNode.node("left-queue").raw("&aYou left the queue for &e{server}!");
+                messagesNode.node("not-in-queue").raw("&cYou are not in any queue!");
+                messagesNode.node("not-in-specific-queue").raw("&cYou are not in the queue for &e{server}!");
+                messagesNode.node("status-in-queues").raw("&aYou are in queues for: &e{servers}");
+                messagesNode.node("queue-leave-usage").raw("&cUsage: /queue leave <server>");
+                changed = true;
+            }
+
+            multipleQueuesLeaveMsg = messagesNode.node("multiple-queues-leave").getString("&cYou are in multiple queues! Type &e/leavequeue <server> &cfor example.");
+            alreadyInQueueMsg = messagesNode.node("already-in-queue").getString("&cYou are already in the queue for &e{server}!");
+            leftQueueMsg = messagesNode.node("left-queue").getString("&aYou left the queue for &e{server}!");
+            notInQueueMsg = messagesNode.node("not-in-queue").getString("&cYou are not in any queue!");
+            notInSpecificQueueMsg = messagesNode.node("not-in-specific-queue").getString("&cYou are not in the queue for &e{server}!");
+            statusInQueuesMsg = messagesNode.node("status-in-queues").getString("&aYou are in queues for: &e{servers}");
+            queueLeaveUsageMsg = messagesNode.node("queue-leave-usage").getString("&cUsage: /queue leave <server>");
+
+            loadPermissions(loader, changed);
 
             logger.info("Config loaded successfully!");
 
@@ -108,63 +134,11 @@ public class ConfigManager {
         }
     }
 
-    // ==================== License System ====================
-    private boolean checkLicense(String licenseKey) {
-        if (licenseKey == null) return false;
+    public boolean isLicenseEnabled() { return licence; }
+    public String getLicenseCode() { return licenceCode; }
 
-        String validLicense1 = "Qwfgwknfnifldm@fgteWdf3#d)";
-        String validLicense2 = "&24jf3jfneifBjaHFBEINJJNBY3#5%*(";
-
-        return licenseKey.equals(validLicense1) || licenseKey.equals(validLicense2);
-    }
-
-    private void checkLicenseAndUpdateName() {
-        if (licence && checkLicense(licenceCode)) {
-            licenseValid = true;
-            pluginDisplayName = "SevoQueuePlus";
-            logger.info("✓ License validated! Running SevoQueuePlus with full features.");
-        } else if (licence) {
-            licenseValid = false;
-            pluginDisplayName = "SevoQueue-Licence";
-            logger.warn("✗ Invalid license code! Please check your Licence-Code in config.yml");
-        } else {
-            licenseValid = false;
-            pluginDisplayName = "SevoQueue-Licence";
-            logger.info("License not found.");
-        }
-    }
-
-    public void sendLicenseMessage() {
-        if (licenseValid) {
-            logger.info("=========================================");
-            logger.info("✓ SevoQueuePlus License Activated!");
-            logger.info("✓ Full features are now available");
-            logger.info("=========================================");
-        }
-    }
-
-    public boolean hasFullFeatures() {
-        return licenseValid;
-    }
-
-    public String getPluginDisplayName() {
-        return pluginDisplayName;
-    }
-
-    public boolean isLicenseValid() {
-        return licenseValid;
-    }
-
-    public boolean isLicenseEnabled() {
-        return licence;
-    }
-
-    public String getLicenseCode() {
-        return licenceCode;
-    }
-
-    private void loadPermissions(YamlConfigurationLoader loader) throws Exception {
-        boolean changed = false;
+    private void loadPermissions(YamlConfigurationLoader loader, boolean configChanged) throws Exception {
+        boolean changed = configChanged;
         permissionNodes.clear();
         permissionEnabled.clear();
 
@@ -203,12 +177,10 @@ public class ConfigManager {
         if (!permissionsSection.virtual()) {
             return permissionsSection;
         }
-
         CommentedConfigurationNode lowercasePermissionsSection = config.node("permissions");
         if (!lowercasePermissionsSection.virtual()) {
             return lowercasePermissionsSection;
         }
-
         return permissionsSection;
     }
 
@@ -216,16 +188,21 @@ public class ConfigManager {
     public int getQueueSec() { return queueSec; }
     public String getQueueMessage() { return queueMessage; }
     public String getActionBarMessage() { return actionBarMessage; }
-
-    // New Getters
     public String getServerCantConnectMessage() { return serverCantConnectMessage; }
     public String getServerCantConnectActionBar() { return serverCantConnectActionBar; }
-
+    public String getServerCantConnectOthersMessage() { return serverCantConnectOthersMessage; }
     public boolean isSlashServer() { return slashServer; }
-    public boolean hasLicence() { return licence; }
-    public String getLicenceCode() { return licenceCode; }
     public boolean isVelocityServerCommand() { return velocityServerCommand; }
     public String getDefaultServer() { return defaultServer; }
+
+    // Getters برای پیام‌های جدید
+    public String getMultipleQueuesLeaveMsg() { return multipleQueuesLeaveMsg; }
+    public String getAlreadyInQueueMsg() { return alreadyInQueueMsg; }
+    public String getLeftQueueMsg() { return leftQueueMsg; }
+    public String getNotInQueueMsg() { return notInQueueMsg; }
+    public String getNotInSpecificQueueMsg() { return notInSpecificQueueMsg; }
+    public String getStatusInQueuesMsg() { return statusInQueuesMsg; }
+    public String getQueueLeaveUsageMsg() { return queueLeaveUsageMsg; }
 
     public String getPermission(String key) {
         return permissionNodes.getOrDefault(key, DEFAULT_PERMISSION_NODES.getOrDefault(key, "sevoqueue." + key));

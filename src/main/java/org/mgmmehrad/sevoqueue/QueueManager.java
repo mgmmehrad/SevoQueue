@@ -1,9 +1,11 @@
 package org.mgmmehrad.sevoqueue;
 
+import com.velocitypowered.api.proxy.ConnectionRequestBuilder;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.slf4j.Logger;
 
 import java.util.*;
@@ -19,7 +21,7 @@ public class QueueManager {
     private Addons addons;
 
     private final Map<String, Queue<UUID>> serverQueues = new ConcurrentHashMap<>();
-    private final Map<UUID, String> playerQueueMap = new ConcurrentHashMap<>();
+    private final Map<UUID, Set<String>> playerQueues = new ConcurrentHashMap<>();
     private final Map<String, Long> nextQueueReadyTime = new ConcurrentHashMap<>();
     private final Map<UUID, Boolean> connectingViaQueue = new ConcurrentHashMap<>();
 
@@ -55,19 +57,21 @@ public class QueueManager {
         boolean serverConnectable = status == Addons.ServerStatus.ONLINE;
 
         if (canBypassQueue(player) && serverConnectable) {
-            if (playerQueueMap.containsKey(playerId)) {
-                removeFromQueue(player, false);
-            }
-
+            removeFromAllQueues(player, false);
             sendMessage(player, "&aBypassing queue, connecting to " + serverName + "...");
             connectingViaQueue.put(playerId, true);
             player.createConnectionRequest(targetServer.get()).connect()
-                    .whenComplete((result, throwable) -> connectingViaQueue.remove(playerId));
+                    .whenComplete((result, throwable) -> {
+                        connectingViaQueue.remove(playerId);
+                        handleConnectionResult(player, result, throwable);
+                    });
             return;
         }
 
-        if (playerQueueMap.containsKey(playerId)) {
-            sendMessage(player, "&cYou are already in a queue! Use &e/queue leave &cfirst.");
+        Set<String> queues = playerQueues.computeIfAbsent(playerId, k -> ConcurrentHashMap.newKeySet());
+
+        if (queues.contains(serverName)) {
+            sendMessage(player, configManager.getAlreadyInQueueMsg().replace("{server}", serverName));
             return;
         }
 
@@ -75,13 +79,8 @@ public class QueueManager {
         Queue<UUID> queue = serverQueues.get(serverName);
         boolean wasEmpty = queue.isEmpty();
 
-        if (queue.contains(playerId)) {
-            sendMessage(player, "&cYou are already in the queue for " + serverName);
-            return;
-        }
-
         queue.add(playerId);
-        playerQueueMap.put(playerId, serverName);
+        queues.add(serverName);
 
         if (!serverConnectable) {
             nextQueueReadyTime.remove(serverName);
@@ -106,15 +105,16 @@ public class QueueManager {
         }
     }
 
-    public void removeFromQueue(Player player) {
-        removeFromQueue(player, true);
-    }
-
-    public void removeFromQueue(Player player, boolean notifyPlayer) {
+    public void removeFromQueue(Player player, String serverName, boolean notifyPlayer) {
         UUID playerId = player.getUniqueId();
-        String serverName = playerQueueMap.remove(playerId);
+        Set<String> queues = playerQueues.get(playerId);
 
-        if (serverName != null) {
+        if (queues != null && queues.contains(serverName)) {
+            queues.remove(serverName);
+            if (queues.isEmpty()) {
+                playerQueues.remove(playerId);
+            }
+
             Queue<UUID> queue = serverQueues.get(serverName);
             if (queue != null) {
                 queue.remove(playerId);
@@ -123,20 +123,44 @@ public class QueueManager {
                 }
             }
             if (notifyPlayer) {
-                sendMessage(player, "&aYou left the queue!");
+                sendMessage(player, configManager.getLeftQueueMsg().replace("{server}", serverName));
             }
             logger.info("{} left the queue for {}", player.getUsername(), serverName);
         } else if (notifyPlayer) {
-            sendMessage(player, "&cYou are not in any queue!");
+            sendMessage(player, configManager.getNotInSpecificQueueMsg().replace("{server}", serverName));
+        }
+    }
+
+    public void removeFromAllQueues(Player player, boolean notifyPlayer) {
+        UUID playerId = player.getUniqueId();
+        Set<String> queues = playerQueues.remove(playerId);
+
+        if (queues != null && !queues.isEmpty()) {
+            for (String serverName : queues) {
+                Queue<UUID> queue = serverQueues.get(serverName);
+                if (queue != null) {
+                    queue.remove(playerId);
+                    if (queue.isEmpty()) {
+                        nextQueueReadyTime.remove(serverName);
+                    }
+                }
+                if (notifyPlayer) {
+                    sendMessage(player, configManager.getLeftQueueMsg().replace("{server}", serverName));
+                }
+                logger.info("{} left the queue for {}", player.getUsername(), serverName);
+            }
+        } else if (notifyPlayer) {
+            sendMessage(player, configManager.getNotInQueueMsg());
         }
     }
 
     public boolean isInQueue(Player player) {
-        return playerQueueMap.containsKey(player.getUniqueId());
+        Set<String> queues = playerQueues.get(player.getUniqueId());
+        return queues != null && !queues.isEmpty();
     }
 
-    public String getPlayerQueue(Player player) {
-        return playerQueueMap.get(player.getUniqueId());
+    public Set<String> getPlayerQueues(Player player) {
+        return playerQueues.getOrDefault(player.getUniqueId(), Collections.emptySet());
     }
 
     public boolean isConnectingViaQueue(Player player) {
@@ -187,9 +211,12 @@ public class QueueManager {
 
     private void startActionBarUpdater() {
         server.getScheduler().buildTask(pluginInstance, () -> {
-            for (Map.Entry<UUID, String> entry : playerQueueMap.entrySet()) {
+            for (Map.Entry<UUID, Set<String>> entry : playerQueues.entrySet()) {
                 UUID playerId = entry.getKey();
-                String serverName = entry.getValue();
+                Set<String> queues = entry.getValue();
+
+                if (queues.isEmpty()) continue;
+                String serverName = queues.iterator().next(); // نمایش اولین صفی که توش حضور دارن
 
                 Optional<Player> optPlayer = server.getPlayer(playerId);
                 if (optPlayer.isEmpty()) continue;
@@ -292,7 +319,11 @@ public class QueueManager {
                 Optional<Player> optPlayer = server.getPlayer(nextPlayerId);
                 if (optPlayer.isEmpty()) {
                     queue.poll();
-                    playerQueueMap.remove(nextPlayerId);
+                    Set<String> pq = playerQueues.get(nextPlayerId);
+                    if (pq != null) {
+                        pq.remove(serverName);
+                        if (pq.isEmpty()) playerQueues.remove(nextPlayerId);
+                    }
                     nextQueueReadyTime.put(serverName, System.currentTimeMillis());
                     continue;
                 }
@@ -303,7 +334,11 @@ public class QueueManager {
 
                 if (now >= readyTime) {
                     queue.poll();
-                    playerQueueMap.remove(nextPlayerId);
+                    Set<String> pq = playerQueues.get(nextPlayerId);
+                    if (pq != null) {
+                        pq.remove(serverName);
+                        if (pq.isEmpty()) playerQueues.remove(nextPlayerId);
+                    }
 
                     if (queue.isEmpty()) {
                         nextQueueReadyTime.remove(serverName);
@@ -315,11 +350,40 @@ public class QueueManager {
 
                     connectingViaQueue.put(nextPlayerId, true);
                     nextPlayer.createConnectionRequest(targetServer.get()).connect()
-                            .whenComplete((result, throwable) -> connectingViaQueue.remove(nextPlayerId));
+                            .whenComplete((result, throwable) -> {
+                                connectingViaQueue.remove(nextPlayerId);
+                                handleConnectionResult(nextPlayer, result, throwable);
+                            });
 
                     logger.info("{} is now connecting to {}", nextPlayer.getUsername(), serverName);
                 }
             }
         }).repeat(500, TimeUnit.MILLISECONDS).schedule();
+    }
+
+    private void handleConnectionResult(Player player, ConnectionRequestBuilder.Result result, Throwable throwable) {
+        if (throwable != null) {
+            String reason = throwable.getMessage() != null ? throwable.getMessage() : "Unknown Connection Error";
+            String msg = configManager.getServerCantConnectOthersMessage().replace("{1}", reason);
+            sendMessage(player, msg);
+            return;
+        }
+
+        if (result != null && !result.isSuccessful()) {
+            String reasonStr = result.getStatus().name();
+
+            if (result.getReasonComponent().isPresent()) {
+                reasonStr = PlainTextComponentSerializer.plainText().serialize(result.getReasonComponent().get());
+
+                if (reasonStr.contains("multiplayer.disconnect.banned")) {
+                    reasonStr = "You are banned from this server";
+                } else if (reasonStr.contains("multiplayer.disconnect.not_whitelisted")) {
+                    reasonStr = "You are not whitelisted on this server";
+                }
+            }
+
+            String msg = configManager.getServerCantConnectOthersMessage().replace("{1}", reasonStr);
+            sendMessage(player, msg);
+        }
     }
 }

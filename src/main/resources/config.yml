@@ -8,6 +8,7 @@ Queue-Message: "&aYou are in position &e{pos} &aYour remaining time is &e{time} 
 ActionBar-Message: "&eQueue: &a{server} &7| &ePosition: &a{pos} &7| &eTime: &a{time}s"
 Server-Cant-Connect-Message: "&cServer Is {Reason}&7. &aYou are in position &e{pos}"
 Server-Cant-Connect-ActionBar: "&cServer Is {Reason}&7. &aYou are in position &e{pos}"
+Server-cant-connect-others-message: "{1}"
 
 slash-server: true
 velocity-server-command: true
@@ -42,3 +43,12 @@ Permissions:
   tabcomplete:
     permission: "sevoqueue.tabcomplete"
     enabled: true
+
+messages:
+  multiple-queues-leave: "&cYou are in multiple queues! Type &e/leavequeue <server> &cfor example."
+  already-in-queue: "&cYou are already in the queue for &e{server}!"
+  left-queue: "&aYou left the queue for &e{server}!"
+  not-in-queue: "&cYou are not in any queue!"
+  not-in-specific-queue: "&cYou are not in the queue for &e{server}!"
+  status-in-queues: "&aYou are in queues for: &e{servers}"
+  queue-leave-usage: "&cUsage: /queue leave <server>"
